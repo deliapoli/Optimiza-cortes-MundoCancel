@@ -1,0 +1,100 @@
+{
+  "entities": {
+    "ProfileType": {
+      "title": "Profile Type",
+      "description": "Definition of an aluminum profile (series, name, color).",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "series": { "type": "string" },
+        "color": { "type": "string" },
+        "description": { "type": "string" }
+      },
+      "required": ["name", "series"]
+    },
+    "StockItem": {
+      "title": "Stock Item",
+      "description": "A piece of material available in inventory.",
+      "type": "object",
+      "properties": {
+        "profileId": { "type": "string" },
+        "length": { "type": "number", "description": "Length in mm" },
+        "quantity": { "type": "number" },
+        "isRemnant": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["profileId", "length", "quantity"]
+    },
+    "OptimizationJob": {
+      "title": "Optimization Job",
+      "description": "A calculation task to optimize cuts.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "date": { "type": "string", "format": "date-time" },
+        "profileId": { "type": "string" },
+        "bladeWidth": { "type": "number", "description": "Kerf width of the saw blade" },
+        "status": { "type": "string", "enum": ["pending", "completed"] },
+        "materialUtilization": { "type": "number" },
+        "totalWaste": { "type": "number" }
+      },
+      "required": ["name", "profileId"]
+    },
+    "CutRequirement": {
+      "title": "Cut Requirement",
+      "description": "A piece that needs to be cut for a job.",
+      "type": "object",
+      "properties": {
+        "jobId": { "type": "string" },
+        "length": { "type": "number" },
+        "quantity": { "type": "number" },
+        "label": { "type": "string" }
+      },
+      "required": ["jobId", "length", "quantity"]
+    },
+    "CutResult": {
+      "title": "Cut Result",
+      "description": "The actual plan of how a stock piece should be cut.",
+      "type": "object",
+      "properties": {
+        "jobId": { "type": "string" },
+        "stockId": { "type": "string" },
+        "stockLength": { "type": "number" },
+        "cuts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "length": { "type": "number" },
+              "label": { "type": "string" }
+            }
+          }
+        },
+        "remnantLength": { "type": "number" }
+      },
+      "required": ["jobId", "stockLength"]
+    }
+  },
+  "firestore": {
+    "profiles": {
+      "schema": "ProfileType",
+      "description": "Catalog of profile types."
+    },
+    "stock": {
+      "schema": "StockItem",
+      "description": "Current inventory of available material."
+    },
+    "jobs": {
+      "schema": "OptimizationJob",
+      "description": "Calculated optimization jobs."
+    },
+    "jobs/{jobId}/requirements": {
+      "schema": "CutRequirement",
+      "description": "Required pieces for a specific job."
+    },
+    "jobs/{jobId}/results": {
+      "schema": "CutResult",
+      "description": "Optimized cutting patterns for a job."
+    }
+  }
+}

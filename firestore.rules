@@ -1,0 +1,87 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Default Deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Helpers ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(data) {
+      return isSignedIn() && data.ownerId == request.auth.uid;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // --- Validation Blueprints ---
+    function isValidProfile(data) {
+      return data.name is string && data.name.size() > 0 && data.name.size() <= 200 &&
+             data.series is string && data.series.size() > 0 && data.series.size() <= 200 &&
+             data.ownerId == request.auth.uid;
+    }
+
+    function isValidStock(data) {
+      return data.profileId is string &&
+             data.length is number && data.length > 0 && data.length <= 100000 &&
+             data.quantity is number && data.quantity > 0 &&
+             data.ownerId == request.auth.uid;
+    }
+
+    function isValidJob(data) {
+      return data.name is string && data.name.size() > 0 && data.name.size() <= 200 &&
+             data.bladeWidth is number && data.bladeWidth >= 0 && data.bladeWidth <= 100 &&
+             data.ownerId == request.auth.uid;
+    }
+
+    function isValidResult(data) {
+      return data.stockLength is number && data.stockLength > 0 &&
+             data.cuts is list &&
+             data.ownerId == request.auth.uid;
+    }
+
+    // --- Rules ---
+
+    match /profiles/{profileId} {
+      allow get: if isOwner(resource.data);
+      allow list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow create: if isSignedIn() && isValidProfile(request.resource.data);
+      allow update: if isOwner(resource.data) && isValidProfile(request.resource.data) &&
+                      request.resource.data.ownerId == resource.data.ownerId;
+      allow delete: if isOwner(resource.data);
+    }
+
+    match /stock/{stockId} {
+      allow get: if isOwner(resource.data);
+      allow list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow create: if isSignedIn() && isValidStock(request.resource.data);
+      allow update: if isOwner(resource.data) && isValidStock(request.resource.data) &&
+                      request.resource.data.ownerId == resource.data.ownerId;
+      allow delete: if isOwner(resource.data);
+    }
+
+    match /jobs/{jobId} {
+      allow get: if isOwner(resource.data);
+      allow list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow create: if isSignedIn() && isValidJob(request.resource.data);
+      allow delete: if isOwner(resource.data);
+
+      match /requirements/{reqId} {
+        allow read, write: if isSignedIn() && get(/databases/$(database)/documents/jobs/$(jobId)).data.ownerId == request.auth.uid;
+      }
+
+      match /results/{resId} {
+        allow list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+        allow get: if isOwner(resource.data);
+        allow create: if isSignedIn() && isValidResult(request.resource.data) &&
+                        get(/databases/$(database)/documents/jobs/$(jobId)).data.ownerId == request.auth.uid;
+      }
+    }
+  }
+}
